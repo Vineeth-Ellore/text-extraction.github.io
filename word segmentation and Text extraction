@@ -1,0 +1,62 @@
+import cv2
+import numpy as np
+from matplotlib import pyplot as plt
+import pytesseract
+import math
+
+#Read your image
+img = cv2.imread('/Users/vineethellore/Documents/notes converter/notes_to_excel.png',cv2.IMREAD_GRAYSCALE)
+
+#Dilate the letters obtained from canny.
+kernel = np.ones((10,10), np.uint8)
+canny_img = cv2.Canny(img.copy(),0,255)
+img_dilation = cv2.dilate(canny_img, kernel, iterations=1)
+
+#find contours in the dilated image
+_, contours, hierarchy = cv2.findContours(img_dilation.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+#Get bouding boxes of this dilated image and eliminate huge boxes.
+mask = np.zeros(img_dilation.shape[:2], dtype=np.int8)
+for cnt in contours:
+    # get the bounding box of the contour and draw the rect on image
+    (x,y,w,h) = cv2.boundingRect(cnt)
+    if w<150 or h<150:
+    # draw the shape filled on the new mask
+        cv2.rectangle(mask ,(x,y,), (x+w,y+h),(255),-1)
+        cv2.imwrite('/Users/vineethellore/Documents/notes converter/mask.png',mask)
+mask_img = cv2.imread('/Users/vineethellore/Documents/notes converter/mask.png',-1)
+mask_kernel = np.ones((10,100), np.uint8)
+mask_dilation = cv2.dilate(mask_img.copy(), mask_kernel, iterations=1)
+cv2.imwrite('/Users/vineethellore/Documents/notes converter/mask_dilation.png',mask_dilation)
+mask_dilate_read = cv2.imread('/Users/vineethellore/Documents/notes converter/mask_dilation.png',-1)
+
+#do this step only if contours are not well defined in above step. Dilate the image once more using a bigger kernel.
+bb_from_mask = _, contours1, hierarchy1 = cv2.findContours(mask_dilation.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+words_bb = []
+for cnt in contours1:
+    # get the bounding box of the contour and draw the rect on image
+    (x,y,w,h) = cv2.boundingRect(cnt)
+    temp = (x,y,w,h)
+    words_bb.append(temp)
+    if w<200 or h<150:
+        cv2.rectangle(img,(x,y), (x+w,y+h),(0,255,0),2)
+      
+#Store all the words obtained from pervious steps. OCR is applied on these words in both original format and binary format.
+#Choose the method that suits your images.
+words = []
+img = cv2.imread('/Users/vineethellore/Documents/notes converter/notes_to_excel.png',cv2.IMREAD_GRAYSCALE)
+for i in range(0,len(words_bb)):
+    temp_bb = img[math.ceil(words_bb[i][1])-5:math.ceil(words_bb[i][1])+math.ceil(words_bb[i][3])+5, math.ceil(words_bb[i][0])-5:math.ceil(words_bb[i][0])+math.ceil(words_bb[i][2])+5]
+    words.append(temp_bb)
+words_binary = []
+for each_word in words:
+    (words_2_bin, im_bw) = cv2.threshold(each_word, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
+    words_binary.append(im_bw) 
+
+#import OCR library from python and get required text. Choose the model which gives a better accuracy for your images.
+for j in words:
+    text = pytesseract.image_to_string(j,lang = 'eng')
+    print(text)
+for k in words_binary:
+    text = pytesseract.image_to_string(k,lang = 'eng')
+    print(text)
