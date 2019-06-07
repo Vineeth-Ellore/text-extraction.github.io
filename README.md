@@ -5,3 +5,4 @@ Python code to extract words and in turn extract letters using pytesseract
 #This code works perfectly on jupyter notebook and has not been tested on python terminal.
 #Change directories while saving images for variables 'mask' and 'mask_dilation'.
 #A FOR loop can be put on this to run on multiple images.
+
